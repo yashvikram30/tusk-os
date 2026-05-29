@@ -1,0 +1,799 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+:root {
+  --bg-void:      #000000;
+  --bg-ice:       #0d0d0f;
+  --bg-surface:   #111113;
+  --border-arctic:#F8FAFC;
+  --border-dim:   #2a2a2e;
+  --text-primary: #F8FAFC;
+  --text-muted:   #6b7280;
+  --accent-orange:#FF4F00;
+  --accent-blue:  #00E0FF;
+  --green:        #10b981;
+  --red:          #ef4444;
+  --purple:       #a855f7;
+  --font-head:    'Space Grotesk', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+  --sidebar-w:    280px;
+  --toolbar-h:    64px;
+}
+
+html, body {
+  height: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* ── Layout shell ── */
+.tusk-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: 100vh;
+  height: 100vh;
+  width: 100vw;
+  max-width: 100vw;
+  /* Fixed so it's always pinned to the full viewport, 
+     overriding any body/layout padding from Tailwind base */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* ── Sidebar ── */
+.tusk-sidebar {
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-void);
+  border-right: 2px solid var(--border-arctic);
+  overflow: hidden;
+  height: 100vh;
+  width: var(--sidebar-w);
+}
+
+.tusk-sidebar-scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  gap: 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-dim) transparent;
+}
+
+/* ── Main column ── */
+.tusk-main {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-void);
+  min-width: 0;
+  width: 100%;
+}
+
+/* ── Logo ── */
+.tusk-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-primary);
+  padding: 1.25rem;
+  border-bottom: 2px solid var(--border-arctic);
+  flex-shrink: 0;
+}
+
+.tusk-logo-icon {
+  width: 26px;
+  height: 26px;
+  background: var(--accent-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Labels ── */
+.tusk-label {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+
+.tusk-section-head {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--accent-orange);
+  margin-bottom: 0.4rem;
+}
+
+/* ── Info cell ── */
+.tusk-cell {
+  background: var(--bg-ice);
+  border: 2px solid var(--border-arctic);
+  padding: 0.6rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── Archive list ── */
+.tusk-archive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tusk-report-card {
+  background: var(--bg-ice);
+  border: 2px solid var(--border-arctic);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.1s ease;
+}
+
+.tusk-report-card:hover {
+  transform: translate(-3px, -3px);
+}
+
+/* ── Sidebar footer ── */
+.tusk-sidebar-footer {
+  flex-shrink: 0;
+  padding: 1rem 1.25rem;
+  border-top: 2px solid var(--border-arctic);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: var(--bg-void);
+}
+
+/* ── Buttons ── */
+.tusk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.6rem 1rem;
+  border: 2px solid var(--border-arctic);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.1s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tusk-btn:hover:not(:disabled) {
+  transform: translate(-3px, -3px);
+  background: var(--bg-ice);
+}
+
+.tusk-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tusk-btn-primary {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+.tusk-btn-primary:hover:not(:disabled) {
+  background: rgba(255,79,0,0.08);
+}
+
+.tusk-btn-secondary {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+.tusk-btn-secondary:hover:not(:disabled) {
+  background: rgba(0,224,255,0.06);
+}
+
+.tusk-btn-danger {
+  border-color: var(--red);
+  color: var(--red);
+  width: 100%;
+}
+.tusk-btn-danger:hover:not(:disabled) {
+  background: rgba(239,68,68,0.08);
+}
+
+.tusk-btn-ghost {
+  border-color: var(--border-dim);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  padding: 0.4rem 0.7rem;
+}
+.tusk-btn-ghost:hover {
+  border-color: var(--border-arctic);
+  color: var(--text-primary);
+  background: transparent;
+}
+
+/* ── Toolbar ── */
+.tusk-toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+  border-bottom: 2px solid var(--border-arctic);
+  background: var(--bg-void);
+}
+
+.tusk-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  border-right: 2px solid var(--border-arctic);
+  min-width: 0;
+}
+
+.tusk-input {
+  width: 100%;
+  background: var(--bg-void);
+  border: none;
+  color: var(--text-primary);
+  padding: 0 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  outline: none;
+  height: var(--toolbar-h);
+}
+
+.tusk-input::placeholder {
+  color: var(--text-muted);
+}
+
+.tusk-toolbar-actions {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.tusk-toolbar-actions .tusk-btn {
+  height: var(--toolbar-h);
+  border: none;
+  border-left: 2px solid var(--border-arctic);
+  padding: 0 1.25rem;
+}
+
+.tusk-toolbar-actions .tusk-btn:first-child {
+  border-left-color: var(--accent-orange);
+}
+.tusk-toolbar-actions .tusk-btn:last-child {
+  border-left-color: var(--accent-blue);
+}
+
+/* Mobile hamburger */
+.tusk-hamburger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--toolbar-h);
+  height: var(--toolbar-h);
+  border: none;
+  border-right: 2px solid var(--border-arctic);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── Whiteboard ── */
+.tusk-whiteboard {
+  flex: 1 1 0%;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-dim) transparent;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ── Messages ── */
+.tusk-msg {
+  background: var(--bg-ice);
+  border: 2px solid var(--border-arctic);
+  padding: 1.25rem 1.5rem;
+  width: 100%;
+  animation: fadeIn 0.2s ease-out;
+  flex-shrink: 0;
+}
+
+.tusk-msg-system {
+  border-color: var(--purple);
+  background: rgba(168,85,247,0.04);
+}
+
+.tusk-msg-author {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+.tusk-msg-note {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  color: var(--text-primary);
+}
+
+/* ── Status bar ── */
+.tusk-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border: 2px solid var(--border-dim);
+  background: var(--bg-ice);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  animation: fadeIn 0.25s ease-out;
+}
+
+.tusk-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  animation: pulse 1.4s infinite;
+}
+
+/* ── Success banner ── */
+.tusk-success {
+  border: 2px solid var(--green);
+  background: rgba(16,185,129,0.05);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  text-align: center;
+  animation: fadeIn 0.35s ease-out;
+}
+
+.tusk-success-title {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tusk-success-desc {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  max-width: 520px;
+  margin: 0;
+}
+
+/* ── Connected badge ── */
+.tusk-connected {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--green);
+  padding: 0.45rem 0.75rem;
+  border: 2px solid var(--green);
+  background: rgba(16,185,129,0.05);
+}
+
+/* ── Spinner ── */
+.tusk-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: currentColor;
+  border-radius: 50% !important;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Empty state ── */
+.tusk-empty {
+  font-family: var(--font-head);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4rem 2rem;
+  border: 2px dashed var(--border-dim);
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex: 1;
+  width: 100%;
+}
+
+/* ── Scanlines ── */
+.tusk-scanlines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.012) 2px,
+    rgba(255,255,255,0.012) 4px
+  );
+  z-index: 9999;
+}
+
+/* ── Mobile overlay backdrop ── */
+.tusk-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 99;
+}
+
+/* ── Keyframes ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ════════════════════════════════ */
+
+/* ── Tablet: sidebar becomes a drawer ── */
+@media (max-width: 900px) {
+  :root { --sidebar-w: 260px; }
+
+  .tusk-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .tusk-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    box-shadow: 4px 0 32px rgba(0,0,0,0.8);
+  }
+
+  .tusk-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .tusk-overlay.is-open {
+    display: block;
+  }
+
+  .tusk-main {
+    grid-column: 1;
+  }
+
+  .tusk-hamburger {
+    display: flex;
+  }
+
+  .tusk-toolbar-actions .tusk-btn span.btn-label {
+    display: none;
+  }
+}
+
+/* ── Mobile: tighter input, single-icon action buttons ── */
+@media (max-width: 540px) {
+  :root { --toolbar-h: 56px; }
+
+  .tusk-whiteboard {
+    padding: 1rem;
+    gap: 0.85rem;
+  }
+
+  .tusk-msg-note {
+    font-size: 0.79rem;
+  }
+
+  .tusk-toolbar-actions .tusk-btn {
+    padding: 0 0.9rem;
+  }
+
+  .tusk-success {
+    padding: 1.25rem 1rem;
+  }
+
+  .tusk-success-title {
+    font-size: 0.82rem;
+  }
+}
+
+/* ── Report Card Active ── */
+.tusk-report-card.active {
+  border-color: var(--purple) !important;
+  background: rgba(168,85,247,0.05) !important;
+}
+
+/* ── Report View Layout ── */
+.tusk-report-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+.tusk-report-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 2px solid var(--border-dim);
+  padding-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.tusk-report-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.tusk-report-body-container {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  min-height: 0;
+  background: var(--bg-ice);
+  border: 2px solid var(--border-dim);
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Blur and Unseal transitions ── */
+.tusk-report-content {
+  transition: filter 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex: 1;
+}
+
+.tusk-report-content.blurred {
+  filter: blur(12px) opacity(0.3);
+  pointer-events: none;
+  user-select: none;
+}
+
+.tusk-report-content.unsealed {
+  filter: blur(0px) opacity(1);
+}
+
+.tusk-report-title {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  color: var(--accent-orange);
+  margin: 0 0 0.5rem 0;
+}
+
+.tusk-report-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 2rem 0;
+  border-bottom: 1px solid var(--border-dim);
+  padding-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.tusk-report-text {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+}
+
+.tusk-report-para {
+  margin-bottom: 1.5rem;
+}
+
+.unsealed .tusk-report-para {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: streamIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes streamIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Skeletons ── */
+.tusk-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+.tusk-skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, #18181b 25%, #27272a 50%, #18181b 75%);
+  background-size: 200% 100%;
+  animation: skeletonGlow 1.5s infinite;
+  width: 100%;
+}
+
+.tusk-skeleton-line.header {
+  height: 28px;
+  width: 60%;
+  margin-bottom: 1rem;
+}
+
+.tusk-skeleton-line.half {
+  width: 45%;
+}
+
+@keyframes skeletonGlow {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Lock Overlay ── */
+.tusk-lock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.tusk-lock-card {
+  background: var(--bg-void);
+  border: 2px solid var(--purple);
+  padding: 2.5rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.8), 0 0 20px rgba(168,85,247,0.1);
+  animation: lockCardIntro 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes lockCardIntro {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.tusk-lock-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(168,85,247,0.1);
+  border: 2px solid var(--purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--purple);
+  margin-bottom: 0.5rem;
+}
+
+.tusk-lock-title {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.tusk-lock-desc {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem 0;
+}
+
+/* ── Live whiteboard blur ── */
+.tusk-messages-container {
+  transition: filter 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.tusk-messages-container.blurred {
+  filter: blur(12px) opacity(0.3);
+  pointer-events: none;
+  user-select: none;
+}
+.tusk-messages-container.unsealed {
+  filter: blur(0px) opacity(1);
+}
+.tusk-skeletons.blurred {
+  filter: blur(12px) opacity(0.3);
+  pointer-events: none;
+  user-select: none;
+}

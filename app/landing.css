@@ -1,0 +1,564 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+:root {
+  --bg-void:      #000000;
+  --bg-ice:       #0d0d0f;
+  --border-arctic:#F8FAFC;
+  --border-dim:   #2a2a2e;
+  --text-primary: #F8FAFC;
+  --text-muted:   #6b7280;
+  --accent-orange:#FF4F00;
+  --accent-blue:  #00E0FF;
+  --font-head:    'Space Grotesk', sans-serif;
+  --font-mono:    'IBM Plex Mono', monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* ── Scanlines ── */
+.tusk-scanlines::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255,255,255,0.012) 2px,
+    rgba(255,255,255,0.012) 4px
+  );
+  z-index: 9999;
+}
+
+/* ── Header ── */
+.tusk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 3rem;
+  border-bottom: 2px solid var(--border-arctic);
+  position: relative;
+  z-index: 10;
+  background: var(--bg-void);
+}
+
+.tusk-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.tusk-logo-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--accent-orange);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ── Buttons ── */
+.tusk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0.65rem 1.2rem;
+  border: 2px solid var(--border-arctic);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.1s ease;
+  box-shadow: none;
+  text-decoration: none;
+}
+
+.tusk-btn:hover:not(:disabled) {
+  transform: translate(-3px, -3px);
+  background: var(--bg-ice);
+}
+
+.tusk-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.tusk-btn-primary {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+.tusk-btn-primary:hover:not(:disabled) {
+  background: rgba(255,79,0,0.08);
+}
+
+.tusk-btn-secondary {
+  border-color: var(--border-arctic);
+  color: var(--text-primary);
+}
+
+.tusk-btn-wallet {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  border-color: var(--border-dim);
+  color: var(--text-muted);
+  cursor: default;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+  text-transform: none;
+}
+.tusk-btn-wallet:hover {
+  transform: none;
+  background: var(--bg-void);
+}
+
+.tusk-btn-danger {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+.tusk-btn-danger:hover {
+  background: rgba(239,68,68,0.08);
+}
+
+/* ── Hero ── */
+.tusk-hero {
+  display: flex;
+  align-items: stretch;
+  min-height: calc(100vh - 73px);
+  position: relative;
+  overflow: hidden;
+}
+
+.tusk-hero-left {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem 3rem;
+  gap: 2rem;
+  position: relative;
+  z-index: 2;
+  border-right: 2px solid var(--border-arctic);
+}
+
+.tusk-ticker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 2px solid var(--border-arctic);
+  padding: 0.35rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  width: fit-content;
+}
+
+.tusk-ticker-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-orange);
+  animation: pulse 1.6s infinite;
+}
+
+.tusk-h1 {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: clamp(3rem, 5.5vw, 5.5rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.tusk-h1 span {
+  color: var(--accent-orange);
+}
+
+.tusk-hero-desc {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--text-muted);
+  max-width: 420px;
+  margin: 0;
+  border-left: 2px solid var(--accent-orange);
+  padding-left: 1rem;
+}
+
+.tusk-hero-cta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tusk-no-wallet {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.tusk-hero-right {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--bg-ice);
+}
+
+.tusk-illustration {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Features ── */
+.tusk-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 2px solid var(--border-arctic);
+}
+
+.tusk-feature-card {
+  padding: 2rem 2rem;
+  border-right: 2px solid var(--border-arctic);
+  background: var(--bg-void);
+  transition: transform 0.1s ease, background 0.1s ease;
+  cursor: default;
+}
+
+.tusk-feature-card:last-child {
+  border-right: none;
+}
+
+.tusk-feature-card:hover {
+  transform: translate(-3px, -3px);
+  background: var(--bg-ice);
+}
+
+.tusk-feature-card.accent {
+  background: var(--bg-ice);
+  border-top: 2px solid var(--accent-orange);
+}
+
+.tusk-feature-num {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent-orange);
+  letter-spacing: 0.15em;
+  margin-bottom: 1rem;
+}
+
+.tusk-feature-title {
+  font-family: var(--font-head);
+  font-weight: 900;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  margin: 0 0 0.75rem 0;
+}
+
+.tusk-feature-desc {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.75;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Footer ── */
+.tusk-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 3rem;
+  border-top: 2px solid var(--border-arctic);
+  background: var(--bg-void);
+}
+
+.tusk-footer-chain {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.tusk-footer-tag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-dim);
+  padding: 0.25rem 0.6rem;
+}
+
+.tusk-footer-copy {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tusk-hero-left > * {
+  animation: fadeIn 0.5s ease-out both;
+}
+.tusk-hero-left > *:nth-child(1) { animation-delay: 0.05s; }
+.tusk-hero-left > *:nth-child(2) { animation-delay: 0.12s; }
+.tusk-hero-left > *:nth-child(3) { animation-delay: 0.19s; }
+.tusk-hero-left > *:nth-child(4) { animation-delay: 0.26s; }
+.tusk-hero-left > *:nth-child(5) { animation-delay: 0.33s; }
+
+/* ── Modal overlay ── */
+.tusk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.tusk-modal {
+  background: var(--bg-void);
+  border: 3px solid var(--border-arctic);
+  width: 90%;
+  max-width: 460px;
+  padding: 2rem;
+  position: relative;
+  box-shadow: 8px 8px 0px 0px var(--accent-orange);
+  animation: modalSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tusk-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+.tusk-modal-close:hover { color: var(--accent-orange); }
+
+.tusk-modal-title {
+  font-family: var(--font-head);
+  font-size: 1.4rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.4rem;
+  color: var(--text-primary);
+}
+
+.tusk-modal-desc {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0 0 1.75rem;
+}
+
+/* ── Wallet options ── */
+.tusk-wallet-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tusk-wallet-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border: 2px solid var(--border-dim);
+  background: var(--bg-ice);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.tusk-wallet-opt:hover:not(:disabled) {
+  border-color: #a855f7;
+  box-shadow: 4px 4px 0px 0px #a855f7;
+  transform: translate(-3px, -3px);
+}
+
+.tusk-wallet-opt:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tusk-wallet-opt-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.tusk-wallet-opt-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(168,85,247,0.1);
+  border: 1px solid rgba(168,85,247,0.25);
+}
+
+.tusk-wallet-opt-name {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.15rem;
+}
+
+.tusk-wallet-opt-desc {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.tusk-wallet-badge {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  padding: 0.2rem 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(168,85,247,0.12);
+  color: #c084fc;
+  border: 1px solid rgba(168,85,247,0.28);
+  flex-shrink: 0;
+}
+
+.tusk-connect-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(192,132,252,0.3);
+  border-top-color: #c084fc;
+  border-radius: 50% !important;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.tusk-wallet-detected {
+  margin-top: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #10b981;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.tusk-account-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.tusk-account-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 2px solid var(--border-dim);
+  background: var(--bg-ice);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.15s ease;
+  font-family: var(--font-mono);
+}
+
+.tusk-account-opt:hover {
+  border-color: var(--accent-orange);
+  box-shadow: 3px 3px 0 0 var(--accent-orange);
+  transform: translate(-2px, -2px);
+}
+
+.tusk-account-opt-addr {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.tusk-account-opt-label {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tusk-wallet-not-detected {
+  margin-top: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-align: center;
+}

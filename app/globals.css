@@ -1,26 +1,161 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Landing Page Variables (Neo-Brutalist) */
+  --neo-bg-primary: #E8DEFF; /* soft lilac */
+  --neo-bg-secondary: #D6E6FF; /* light blue */
+  --neo-accent-green: #BFFF00; /* neon green */
+  --neo-accent-yellow: #FFE135; /* bright yellow */
+  --neo-accent-pink: #FF3EA5; /* hot pink */
+  --neo-border: #000000;
+  
+  /* Dashboard Variables (Dark Mode) */
+  --dash-bg-main: #0d0d0f;
+  --dash-bg-sidebar: #151518;
+  --dash-border: #27272a;
+  --dash-accent: #6366f1;
+  --dash-accent-hover: #4f46e5;
+  --dash-report-btn: #3b82f6;
+  --dash-report-btn-hover: #2563eb;
+  --dash-text-primary: #f4f4f5;
+  --dash-text-secondary: #a1a1aa;
+  --dash-researcher: #10b981;
+  --dash-risk-manager: #ef4444;
+  --dash-system: #a855f7;
+  --dash-unknown: #eab308;
+  --dash-bg-chat: #1f1f22;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+}
+
+/* =========================================
+   NEO-BRUTALIST LANDING PAGE STYLES
+   ========================================= */
+.neo-brutalist {
+  background-color: var(--neo-bg-primary);
+  color: var(--neo-border);
+  min-height: 100vh;
+}
+
+.neo-border {
+  border: 3px solid var(--neo-border);
+}
+
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px var(--neo-border);
+}
+
+.neo-button {
+  background-color: var(--neo-accent-green);
+  border: 3px solid var(--neo-border);
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  box-shadow: 4px 4px 0px 0px var(--neo-border);
+}
+
+.neo-button:hover:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px var(--neo-border);
+}
+
+.neo-button:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  box-shadow: 0px 0px 0px 0px var(--neo-border);
+}
+
+.neo-button:disabled {
+  background-color: #d1d5db;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: 4px 4px 0px 0px #9ca3af;
+  border-color: #9ca3af;
+}
+
+.neo-heading {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+/* =========================================
+   DASHBOARD DARK MODE STYLES
+   ========================================= */
+.dashboard {
+  background-color: var(--dash-bg-main);
+  color: var(--dash-text-primary);
+  min-height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.dashboard-sidebar {
+  width: 320px;
+  background-color: var(--dash-bg-sidebar);
+  border-right: 1px solid var(--dash-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Custom Scrollbar for Dashboard */
+.dashboard *::-webkit-scrollbar {
+  width: 8px;
+}
+.dashboard *::-webkit-scrollbar-track {
+  background: var(--dash-bg-main);
+}
+.dashboard *::-webkit-scrollbar-thumb {
+  background: var(--dash-border);
+  border-radius: 4px;
+}
+.dashboard *::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Chat message animations */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-message {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 currentColor; }
+  50% { opacity: 0.6; box-shadow: 0 0 0 6px transparent; }
+}
+
+.live-dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  border-top-color: white !important;
+  animation: spin 1s ease-in-out infinite;
 }
