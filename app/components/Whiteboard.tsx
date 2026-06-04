@@ -1,6 +1,7 @@
 "use client";
 
 import React, { RefObject } from "react";
+import Markdown from "./Markdown";
 
 export type ChatMessage = {
   author: string;
@@ -23,6 +24,8 @@ export interface WhiteboardProps {
   isLiveHistoryUnsealed: boolean;
   isDecrypting: boolean;
   onDecryptHistory: () => void;
+  consensusReached: boolean | null;
+  debateIterations: number | null;
 }
 
 export default function Whiteboard({
@@ -41,6 +44,8 @@ export default function Whiteboard({
   isLiveHistoryUnsealed,
   isDecrypting,
   onDecryptHistory,
+  consensusReached,
+  debateIterations,
 }: WhiteboardProps) {
   return (
     <div ref={whiteboardRef} className="tusk-whiteboard">
@@ -105,7 +110,7 @@ export default function Whiteboard({
                           const roleIcon = isArchitect ? "◆" : isRedTeam ? "⚔" : isBlueTeam ? "🛡" : isResearcher ? "🔬" : isRisk ? "⚠" : "●";
 
                           return (
-                            <p
+                            <div
                               key={idx}
                               className="tusk-report-para"
                               style={{
@@ -121,8 +126,8 @@ export default function Whiteboard({
                               <strong style={{ color: authorColor, textTransform: "uppercase", fontSize: "0.6rem", letterSpacing: "0.1em", display: "block", marginBottom: "0.4rem" }}>
                                 {roleIcon} {displayName}
                               </strong>
-                              {item.note}
-                            </p>
+                              <Markdown content={item.note} />
+                            </div>
                           );
                         })}
                     </div>
@@ -329,10 +334,42 @@ export default function Whiteboard({
                             textTransform: "none",
                           }}>#{String(idx + 1).padStart(2, "0")}</span>
                         </div>
-                        <div className="tusk-msg-note">{item.note}</div>
+                        <div className="tusk-msg-note">
+                          <Markdown content={item.note} />
+                        </div>
                       </div>
                     );
                   })}
+                
+                {consensusReached !== null && (
+                  <div 
+                    className="tusk-msg tusk-msg-system" 
+                    style={{ 
+                      borderColor: consensusReached ? "var(--green)" : "var(--accent-orange)",
+                      background: consensusReached ? "rgba(16,185,129,0.04)" : "rgba(255,79,0,0.04)"
+                    }}
+                  >
+                    <div 
+                      className="tusk-msg-author" 
+                      style={{ 
+                        color: consensusReached ? "var(--green)" : "var(--accent-orange)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem"
+                      }}
+                    >
+                      <span>{consensusReached ? "✓" : "⚠"}</span>
+                      {consensusReached ? "CONSENSUS VERIFICATION SUCCESSFUL" : "DIALECTIC RUN CAP EXCEEDED"}
+                    </div>
+                    <div className="tusk-msg-note" style={{ fontSize: "0.78rem", lineHeight: 1.6 }}>
+                      {consensusReached ? (
+                        `The Red Team (Exploiter) failed to find any critical vulnerabilities after ${debateIterations} rounds of mitigation patches. The structural architecture of the DeFi strategy is verified as secure.`
+                      ) : (
+                        `The multi-agent consensus loop completed ${debateIterations} rounds of debate but did not reach full verification consensus. Remaining exploits or attack vectors may still exist in the current strategy.`
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           )}

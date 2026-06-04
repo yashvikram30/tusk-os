@@ -15,8 +15,11 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "TuskOS — Long-Term Memory for AI Agents",
+  title: "TuskOS — Sovereign Memory for Autonomous Agents",
   description: "Verifiable on-chain memory powered by Walrus & MemWal.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

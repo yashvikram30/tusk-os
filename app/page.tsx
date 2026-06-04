@@ -80,10 +80,7 @@ export default function LandingPage() {
       {/* ── HERO ── */}
       <section className="tusk-hero">
         <div className="tusk-hero-left">
-          <div className="tusk-ticker">
-            <div className="tusk-ticker-dot" />
-            LIVE · WALRUS TESTNET · SUI NETWORK
-          </div>
+          
 
           <h1 className="tusk-h1">
             SOVEREIGN<br />
@@ -118,11 +115,7 @@ export default function LandingPage() {
             </a>
           </div>
 
-          {!selectedAddress && (
-            <p className="tusk-no-wallet">
-              * Connect Slush wallet to access dashboard
-            </p>
-          )}
+          
         </div>
 
         {/* Right — abstract line-art illustration */}

@@ -11,7 +11,7 @@ import {
   useSuiClient,
   useWallets,
 } from "@mysten/dapp-kit";
-import Sidebar from "../components/Sidebar";
+import Sidebar, { Board } from "../components/Sidebar";
 import Toolbar from "../components/Toolbar";
 import Whiteboard from "../components/Whiteboard";
 import "./dashboard.css";
@@ -23,6 +23,7 @@ const WalletConnectFlow = dynamic(
 
 // Dynamically import ShareModal (client-only — uses wallet/Sui SDK)
 const ShareModal = dynamic(() => import("../components/ShareModal"), { ssr: false });
+const NewBoardModal = dynamic(() => import("../components/NewBoardModal"), { ssr: false });
 
 // The deployed Move package ID — update this after `sui client publish`
 const PACKAGE_ID = process.env.NEXT_PUBLIC_TUSKOS_PACKAGE_ID || "";
@@ -45,6 +46,14 @@ export default function Dashboard() {
 
   const [workspaceId, setWorkspaceId] = useState<string>("");
   const [topic, setTopic] = useState("A capital-efficient leverage yield aggregator on Sui");
+  const [activeMode, setActiveMode] = useState<string>("smart-contract-audit");
+
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [activeBoardId, setActiveBoardId] = useState<string>("default");
+  const [showNewBoardModal, setShowNewBoardModal] = useState(false);
+
+  const [consensusReached, setConsensusReached] = useState<boolean | null>(null);
+  const [debateIterations, setDebateIterations] = useState<number | null>(null);
 
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [archivedReports, setArchivedReports] = useState<any[]>([]);
@@ -91,9 +100,12 @@ export default function Dashboard() {
       const res = await fetch(`/api/history?workspace_id=${wsId}`);
       const data = await res.json();
 
-      // Ignore stale wallet switches
+      // Ignore stale wallet or board switches
       const currentAddress = walletAddressRef.current?.toLowerCase();
-      if (wsId !== `wallet_${currentAddress}`) return;
+      const expectedWsId = activeBoardId === "default"
+        ? `wallet_${currentAddress}`
+        : `wallet_${currentAddress}_board_${activeBoardId}`;
+      if (wsId !== expectedWsId) return;
 
       const raw = (data.history || []) as ChatMessage[];
       // Deduplicate inline (deduplicateHistory is defined after this fn in component scope)
@@ -172,12 +184,16 @@ export default function Dashboard() {
       router.push("/");
       return;
     }
-    const wsId = `wallet_${walletAddress}`;
+    const normalizedAddress = walletAddress.toLowerCase();
+    const wsId = activeBoardId === "default"
+      ? `wallet_${normalizedAddress}`
+      : `wallet_${normalizedAddress}_board_${activeBoardId}`;
+
     setWorkspaceId(wsId);
     fetchHistory(wsId);
     fetchUserReports(wsId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletAddress, router]);
+  }, [walletAddress, activeBoardId, router]);
 
   // Load address-specific configurations from localStorage whenever walletAddress changes
   useEffect(() => {
@@ -230,8 +246,31 @@ export default function Dashboard() {
         checkPolicy();
       }
 
-      // 2. Restore encrypted history
-      const savedEncrypted = localStorage.getItem(`tuskos_encrypted_${addressLower}`);
+      // 2. Restore boards list and active board ID
+      const savedBoards = localStorage.getItem(`tuskos_boards_${addressLower}`);
+      const initialBoards = savedBoards
+        ? JSON.parse(savedBoards)
+        : [
+            {
+              id: "default",
+              name: "Default Workspace",
+              topic: "A capital-efficient leverage yield aggregator on Sui",
+            },
+          ];
+      setBoards(initialBoards);
+
+      const savedActiveBoard = localStorage.getItem(`tuskos_active_board_${addressLower}`) || "default";
+      const activeExists = initialBoards.some((b: any) => b.id === savedActiveBoard);
+      const actualActiveBoard = activeExists ? savedActiveBoard : "default";
+      setActiveBoardId(actualActiveBoard);
+
+      const activeBoardObj = initialBoards.find((b: any) => b.id === actualActiveBoard);
+      if (activeBoardObj) {
+        setTopic(activeBoardObj.topic);
+      }
+
+      // 3. Restore board-specific encrypted history
+      const savedEncrypted = localStorage.getItem(`tuskos_encrypted_${addressLower}_board_${actualActiveBoard}`);
       if (savedEncrypted) {
         setEncryptedHistory(savedEncrypted);
         setIsLiveHistoryUnsealed(false);
@@ -240,7 +279,7 @@ export default function Dashboard() {
         setIsLiveHistoryUnsealed(false);
       }
 
-      // 3. Hydrate archived reports from server (own + shared index cache query)
+      // 4. Hydrate archived reports from server (own + shared index cache query)
       loadArchivedJournals(addressLower);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,16 +297,109 @@ export default function Dashboard() {
 
   const applyWalletSwitch = (address: string) => {
     const normalized = address.toLowerCase();
-    const wsId = `wallet_${normalized}`;
+    
+    // Load boards for the switched wallet
+    const savedBoards = localStorage.getItem(`tuskos_boards_${normalized}`);
+    const initialBoards = savedBoards
+      ? JSON.parse(savedBoards)
+      : [
+          {
+            id: "default",
+            name: "Default Workspace",
+            topic: "A capital-efficient leverage yield aggregator on Sui",
+          },
+        ];
+    setBoards(initialBoards);
+
+    const savedActiveBoard = localStorage.getItem(`tuskos_active_board_${normalized}`) || "default";
+    const activeExists = initialBoards.some((b: any) => b.id === savedActiveBoard);
+    const actualActiveBoard = activeExists ? savedActiveBoard : "default";
+    setActiveBoardId(actualActiveBoard);
+
+    const activeBoardObj = initialBoards.find((b: any) => b.id === actualActiveBoard);
+    const currentTopic = activeBoardObj?.topic || "A capital-efficient leverage yield aggregator on Sui";
+    setTopic(currentTopic);
+
+    const wsId = actualActiveBoard === "default"
+      ? `wallet_${normalized}`
+      : `wallet_${normalized}_board_${actualActiveBoard}`;
+    
     setWorkspaceId(wsId);
     setArchivedReports([]);
     setSharedReports([]);
     setSelectedReport(null);
     setHistory([]);
+    setConsensusReached(null);
+    setDebateIterations(null);
     setPolicyObjectId(localStorage.getItem(`tuskos_policy_${normalized}`) || "");
-    setEncryptedHistory(localStorage.getItem(`tuskos_encrypted_${normalized}`));
+    setEncryptedHistory(localStorage.getItem(`tuskos_encrypted_${normalized}_board_${actualActiveBoard}`));
     fetchHistory(wsId);
     fetchUserReports(wsId);
+  };
+
+  const handleSelectBoard = (boardId: string) => {
+    if (!walletAddress) return;
+    const addressLower = walletAddress.toLowerCase();
+    
+    const targetBoard = boards.find(b => b.id === boardId);
+    if (!targetBoard) return;
+
+    setActiveBoardId(boardId);
+    localStorage.setItem(`tuskos_active_board_${addressLower}`, boardId);
+    setTopic(targetBoard.topic);
+
+    setHistory([]);
+    setSelectedReport(null);
+    setSelectedReportText(null);
+    setSelectedReportHistory([]);
+    setIsReportUnsealed(false);
+    setConsensusReached(null);
+    setDebateIterations(null);
+    
+    const savedEncrypted = localStorage.getItem(`tuskos_encrypted_${addressLower}_board_${boardId}`);
+    if (savedEncrypted) {
+      setEncryptedHistory(savedEncrypted);
+      setIsLiveHistoryUnsealed(false);
+    } else {
+      setEncryptedHistory(null);
+      setIsLiveHistoryUnsealed(false);
+    }
+  };
+
+  const handleCreateBoard = (name: string, topic: string) => {
+    if (!walletAddress) return;
+    const addressLower = walletAddress.toLowerCase();
+    
+    const newBoard = {
+      id: `board_${Date.now()}`,
+      name,
+      topic,
+    };
+    
+    const updatedBoards = [...boards, newBoard];
+    setBoards(updatedBoards);
+    localStorage.setItem(`tuskos_boards_${addressLower}`, JSON.stringify(updatedBoards));
+    
+    setActiveBoardId(newBoard.id);
+    localStorage.setItem(`tuskos_active_board_${addressLower}`, newBoard.id);
+    setTopic(newBoard.topic);
+
+    setHistory([]);
+    setSelectedReport(null);
+    setSelectedReportText(null);
+    setSelectedReportHistory([]);
+    setIsReportUnsealed(false);
+    setEncryptedHistory(null);
+    setIsLiveHistoryUnsealed(false);
+  };
+
+  const handleSetTopic = (newTopic: string) => {
+    setTopic(newTopic);
+    if (!walletAddress) return;
+    const addressLower = walletAddress.toLowerCase();
+    const updatedBoards = boards.map(b => b.id === activeBoardId ? { ...b, topic: newTopic } : b);
+    setBoards(updatedBoards);
+    localStorage.setItem(`tuskos_boards_${addressLower}`, JSON.stringify(updatedBoards));
   };
 
   const handleDisconnect = () => {
@@ -297,23 +429,30 @@ export default function Dashboard() {
     // Clear previous session messages immediately so new run starts fresh
     setHistory([]);
     setEncryptedHistory(null);
-    localStorage.removeItem(`tuskos_encrypted_${walletAddress?.toLowerCase()}`);
+    setConsensusReached(null);
+    setDebateIterations(null);
+    localStorage.removeItem(`tuskos_encrypted_${walletAddress?.toLowerCase()}_board_${activeBoardId}`);
     setIsLiveHistoryUnsealed(false);
     setLiveStatus({ text: "Running Actor-Critic Consensus Loop (Architect, Red Team, Blue Team)...", color: "blue" });
     try {
       const res = await fetch("/api/run_crew", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, topic }),
+        body: JSON.stringify({ workspaceId, topic, mode: activeMode }),
       });
       const data = await res.json();
 
-      // Ignore stale wallet switches
+      // Ignore stale wallet or board switches
       const currentAddress = walletAddressRef.current?.toLowerCase();
-      if (workspaceId !== `wallet_${currentAddress}`) return;
+      const expectedWsId = activeBoardId === "default"
+        ? `wallet_${currentAddress}`
+        : `wallet_${currentAddress}_board_${activeBoardId}`;
+      if (workspaceId !== expectedWsId) return;
 
       if (data.status === "success" && data.history) {
         setHistory(deduplicateHistory(data.history as ChatMessage[]));
+        setConsensusReached(data.consensus);
+        setDebateIterations(data.iterations);
       } else if (data.error) {
         alert(`Agent run failed: ${data.error}`);
       } else {
@@ -460,7 +599,7 @@ export default function Dashboard() {
       );
       const b64 = encryptedBytesToBase64(encryptedBytes);
       setEncryptedHistory(b64);
-      localStorage.setItem(`tuskos_encrypted_${walletAddress?.toLowerCase()}`, b64);
+      localStorage.setItem(`tuskos_encrypted_${walletAddress?.toLowerCase()}_board_${activeBoardId}`, b64);
       setHistory([]); // Wipe plain text from active React state!
       setIsLiveHistoryUnsealed(false);
 
@@ -492,7 +631,7 @@ export default function Dashboard() {
   const decryptHistory = async () => {
     const b64 =
       encryptedHistory ||
-      localStorage.getItem(`tuskos_encrypted_${walletAddress?.toLowerCase()}`);
+      localStorage.getItem(`tuskos_encrypted_${walletAddress?.toLowerCase()}_board_${activeBoardId}`);
     if (!b64) {
       alert("No encrypted history found. Seal your history first.");
       return;
@@ -669,7 +808,7 @@ export default function Dashboard() {
         setSuccessBanner(data.blobId);
         // Clear active encrypted history since it has been uploaded/archived
         setEncryptedHistory(null);
-        localStorage.removeItem(`tuskos_encrypted_${walletAddress.toLowerCase()}`);
+        localStorage.removeItem(`tuskos_encrypted_${walletAddress.toLowerCase()}_board_${activeBoardId}`);
         
         // Optimistic UI Swap: replace the syncing item with the actual report card instantly
         const realReport = {
@@ -759,12 +898,18 @@ export default function Dashboard() {
           onRebuildFromBlockchain={handleRebuildFromBlockchain}
           onSwitchWalletAccount={switchWalletAccount}
           onDisconnect={handleDisconnect}
+          boards={boards}
+          activeBoardId={activeBoardId}
+          onSelectBoard={handleSelectBoard}
+          onNewBoardClick={() => setShowNewBoardModal(true)}
+          activeMode={activeMode}
+          onSelectMode={setActiveMode}
         />
 
         <main className="tusk-main">
           <Toolbar
             topic={topic}
-            setTopic={setTopic}
+            setTopic={handleSetTopic}
             isRunning={isRunning}
             isArchiving={isArchiving}
             encryptedHistory={encryptedHistory}
@@ -797,6 +942,8 @@ export default function Dashboard() {
             isLiveHistoryUnsealed={isLiveHistoryUnsealed}
             isDecrypting={isDecrypting}
             onDecryptHistory={decryptHistory}
+            consensusReached={consensusReached}
+            debateIterations={debateIterations}
           />
         </main>
       </div>
@@ -828,6 +975,12 @@ export default function Dashboard() {
           applyWalletSwitch(address);
           setShowWalletModal(false);
         }}
+      />
+
+      <NewBoardModal
+        isOpen={showNewBoardModal}
+        onClose={() => setShowNewBoardModal(false)}
+        onCreate={handleCreateBoard}
       />
     </>
   );
