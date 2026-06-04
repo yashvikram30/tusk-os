@@ -60,12 +60,14 @@ export default function LandingPage() {
               <div className="tusk-btn tusk-btn-wallet">
                 {selectedAddress.slice(0, 6)}…{selectedAddress.slice(-4)}
               </div>
-              <button onClick={openConnectFlow} className="tusk-btn tusk-btn-secondary">
-                SWITCH ACCOUNT
-              </button>
-              <button onClick={() => disconnect()} className="tusk-btn tusk-btn-danger">
-                DISCONNECT
-              </button>
+              <div style={{ display: "flex", gap: "0.4rem" }}>
+                <button onClick={openConnectFlow} className="tusk-btn tusk-btn-secondary">
+                  SWITCH
+                </button>
+                <button onClick={() => disconnect()} className="tusk-btn tusk-btn-danger">
+                  DISCONNECT
+                </button>
+              </div>
             </>
           ) : (
             <button onClick={openConnectFlow} className="tusk-btn tusk-btn-primary">
@@ -84,16 +86,14 @@ export default function LandingPage() {
           </div>
 
           <h1 className="tusk-h1">
-            LONG-TERM<br />
+            SOVEREIGN<br />
             <span>MEMORY</span><br />
-            FOR AI<br />
+            FOR AUTONOMOUS<br />
             AGENTS
           </h1>
 
           <p className="tusk-hero-desc">
-            TuskOS introduces a verifiable memory layer on Walrus — allowing
-            agents to remember, share, and reuse information across sessions,
-            permanently anchored on-chain.
+            TuskOS delivers a cryptographically verifiable context file system powered by Walrus and MemWal. By eliminating the Web2.5 data-security compromise, it enables multi-agent swarms to securely anchor execution states, share zero-trust contexts, and maintain absolute data custody.
           </p>
 
           <div className="tusk-hero-cta">
@@ -191,12 +191,12 @@ export default function LandingPage() {
       {/* ── FEATURES ── */}
       <section className="tusk-features">
         {[
-          { num: "01", title: "Decentralized Memory",
-            desc: "Agents read and write state to MemWal namespaces instead of centralized databases. Every thought persists.", accent: false },
-          { num: "02", title: "On-Chain Archival",
-            desc: "Publish finalized executive reports to Walrus Testnet for permanent, verifiable, and tamper-proof storage.", accent: true },
-          { num: "03", title: "Multi-Agent Collab",
-            desc: "DeFi Architect, Red Team, and Blue Team agents debate protocol specs on a shared whiteboard to reach consensus.", accent: false },
+          { num: "01", title: "TEMPORAL STATE ANCHORING",
+            desc: "Agents anchor real-time execution states directly to immutable MemWal ledger notes, completely bypassing vulnerable, centralized cloud vector databases.", accent: false },
+          { num: "02", title: "DIRECT PAYLOAD ATTESTATION",
+            desc: "Stream heavy structured agent outputs and critical executive records natively to the Walrus Data Availability layer for permanent, tamper-proof auditing.", accent: true },
+          { num: "03", title: "DETERMINISTIC REASONING LOOPS",
+            desc: "Adversarial agent arrays (Red Team vs. Blue Team) stress-test logical pathways on an encrypted shared blackboard until a strict, verified consensus is locked.", accent: false },
         ].map(f => (
           <div key={f.title} className={`tusk-feature-card${f.accent ? " accent" : ""}`}>
             <div className="tusk-feature-num">{f.num} ——</div>
