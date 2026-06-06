@@ -73,6 +73,7 @@ export default function Dashboard() {
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   // ── Selected Archived Report State ─────────────────────────────────────
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
@@ -81,13 +82,33 @@ export default function Dashboard() {
   const [isReportUnsealed, setIsReportUnsealed] = useState(false);
   const [isFetchingReport, setIsFetchingReport] = useState(false);
   const [isDecryptingReport, setIsDecryptingReport] = useState(false);
+  const [isFetchingHistory, setIsFetchingHistory] = useState(false);
 
   // For live history decrypt state
   const [isLiveHistoryUnsealed, setIsLiveHistoryUnsealed] = useState(false);
 
   // ── Shared Reports state ──
   const [sharedReports, setSharedReports] = useState<any[]>([]);
-  const [isRebuilding, setIsRebuilding] = useState(false);
+
+  // ── DB / Chain mode ─────────────────────────────────────────────────────────
+  // rebuildPhase drives the two-phase blockchain rebuild UI:
+  //   null           → idle
+  //   "reading-chain" → Phase 1: fetching from MemWal
+  //   "syncing-db"   → Phase 2: re-populating MongoDB
+  //   "done"         → briefly shown before resetting to null
+  type RebuildPhase = null | "reading-chain" | "syncing-db" | "done";
+  const [rebuildPhase, setRebuildPhase] = useState<RebuildPhase>(null);
+  const rebuildAbortRef = useRef<AbortController | null>(null);
+  // isRebuilding is derived — true whenever a rebuild is in progress
+  const isRebuilding = rebuildPhase !== null && rebuildPhase !== "done";
+
+  // "db" = read from MongoDB, "chain" = read directly from MemWal
+  const [dbMode, setDbMode] = useState<"db" | "chain">("db");
+  const [isNukingDb, setIsNukingDb] = useState(false);
+
+  const [boardsExpanded, setBoardsExpanded] = useState(false);
+  const [archivedExpanded, setArchivedExpanded] = useState(false);
+  const [sharedExpanded, setSharedExpanded] = useState(false);
 
   const whiteboardRef = useRef<HTMLDivElement>(null);
   const walletAddressRef = useRef(walletAddress);
@@ -95,7 +116,28 @@ export default function Dashboard() {
     walletAddressRef.current = walletAddress;
   }, [walletAddress]);
 
+  // ── Restore dbMode from localStorage on wallet change ────────────────────
+  useEffect(() => {
+    if (walletAddress) {
+      const saved = localStorage.getItem(`tuskos_db_mode_${walletAddress.toLowerCase()}`);
+      setDbMode(saved === "chain" ? "chain" : "db");
+    }
+  }, [walletAddress]);
+
+  // ── Abort in-flight rebuild when wallet changes ───────────────────────────
+  useEffect(() => {
+    rebuildAbortRef.current?.abort();
+    setRebuildPhase(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletAddress]);
+
+  // ── Abort in-flight rebuild on unmount ────────────────────────────────────
+  useEffect(() => {
+    return () => { rebuildAbortRef.current?.abort(); };
+  }, []);
+
   const fetchHistory = async (wsId: string) => {
+    setIsFetchingHistory(true);
     try {
       const res = await fetch(`/api/history?workspace_id=${wsId}`);
       const data = await res.json();
@@ -121,24 +163,99 @@ export default function Dashboard() {
       setHistory(deduped);
     } catch (err) {
       console.error("Failed to fetch history", err);
+    } finally {
+      setIsFetchingHistory(false);
     }
   };
 
   const fetchUserReports = async (wsId: string) => {
     const address = wsId.replace("wallet_", "");
-    await loadArchivedJournals(address);
+    const cleanAddress = address.split("_board_")[0];
+    await loadArchivedJournals(cleanAddress);
   };
 
   /**
-   * Loads all archived and shared journals for a given wallet address
-   * by querying the fast MongoDB indexer route.
+   * Applies chain_reports API response directly to state.
+   * Used both by loadFromChain and as the Phase 1 display step of rebuild.
+   */
+  const applyChainReportsToState = (
+    data: {
+      ownReports: { blobId: string; topic: string; policyId: string | null; needsSync: boolean }[];
+      sharedGrants: { fromAddress: string; policyId: string; blobId?: string }[];
+    },
+    addressLower: string
+  ) => {
+    const ownArchived = (data.ownReports || []).map((r) => ({
+      blobId: r.blobId,
+      topic: r.topic,
+      ownerAddress: addressLower,
+      // policyId: null for legacy notes (needsSync: true). Decryption blocked until rebuild.
+      policyId: r.policyId ?? "",
+      needsSync: r.needsSync,
+      sharedWith: [],
+      timestamp: new Date(),
+    }));
+
+    const sharedWithMe = (data.sharedGrants || []).map((g) => ({
+      blobId: g.blobId || "",
+      topic: "Shared Report",
+      ownerAddress: g.fromAddress,
+      policyId: g.policyId,
+      isShared: true,
+      fromAddress: g.fromAddress,
+      sharedWith: [addressLower],
+      timestamp: new Date(),
+    })).filter((r) => r.blobId); // only include grants with a known blobId
+
+    setArchivedReports((prev) => {
+      const syncing = prev.filter((r: any) => r.isSyncing);
+      return [...syncing, ...ownArchived];
+    });
+    setSharedReports(sharedWithMe);
+
+    // Auto-expand sections that have reports to ensure visibility
+    if (ownArchived.length > 0) {
+      setArchivedExpanded(true);
+    }
+    if (sharedWithMe.length > 0) {
+      setSharedExpanded(true);
+    }
+  };
+
+  /**
+   * Loads reports directly from the MemWal chain — no MongoDB needed.
+   * Sets dbMode to "chain" in state + localStorage.
+   */
+  const loadFromChain = async (address: string) => {
+    const addressLower = address.toLowerCase();
+    try {
+      const res = await fetch(`/api/admin/chain_reports?wallet=${addressLower}`);
+      if (!res.ok) throw new Error(`chain_reports returned ${res.status}`);
+      const data = await res.json();
+      // Ignore stale wallet switches
+      if (addressLower !== walletAddressRef.current?.toLowerCase()) return;
+      applyChainReportsToState(data, addressLower);
+    } catch (err) {
+      console.error('loadFromChain: failed to read from MemWal:', err);
+    }
+  };
+
+  /**
+   * Loads all archived and shared journals for a given wallet address.
+   * Primary path: MongoDB (fast index). Fallback: MemWal chain if DB is unavailable.
    */
   const loadArchivedJournals = async (address: string) => {
     const addressLower = address.toLowerCase();
 
+    // Check localStorage synchronously to avoid React state update batching race conditions
+    const currentDbMode = localStorage.getItem(`tuskos_db_mode_${addressLower}`) || "db";
+    if (currentDbMode === "chain") {
+      return loadFromChain(address);
+    }
+
     try {
       const res = await fetch(`/api/reports?wallet=${addressLower}`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`reports returned ${res.status}`);
       const data = await res.json();
 
       // Ignore stale wallet switches
@@ -174,8 +291,23 @@ export default function Dashboard() {
 
       setSharedReports(sharedWithMe);
 
+      // Auto-expand sections that have reports to ensure visibility
+      const ownArchivedFiltered = ownArchived.filter((r: any) => !r.needsSync);
+      if (ownArchivedFiltered.length > 0) {
+        setArchivedExpanded(true);
+      }
+      if (sharedWithMe.length > 0) {
+        setSharedExpanded(true);
+      }
+
     } catch (err) {
-      console.error('Failed to load archived/shared reports:', err);
+      console.error('loadArchivedJournals: MongoDB unavailable, falling back to chain mode:', err);
+      // Auto-switch to chain mode and retry from MemWal
+      setDbMode("chain");
+      if (walletAddress) {
+        localStorage.setItem(`tuskos_db_mode_${addressLower}`, "chain");
+      }
+      return loadFromChain(address);
     }
   };
 
@@ -203,49 +335,6 @@ export default function Dashboard() {
       setArchivedReports([]);
       setSharedReports([]);
 
-      // 1. Restore policy object ID
-      const savedPolicy = localStorage.getItem(`tuskos_policy_${addressLower}`);
-      setPolicyObjectId(savedPolicy || "");
-
-      if (savedPolicy) {
-        // Asynchronously verify that the policy object's on-chain package matches current PACKAGE_ID
-        const checkPolicy = async () => {
-          try {
-            const { getSuiClient } = await import("../lib/seal");
-            const suiClient = getSuiClient();
-            const objDetails = await suiClient.getObject({
-              id: savedPolicy,
-              options: { showType: true }
-            });
-            if (objDetails.data && objDetails.data.type) {
-              const typeStr = objDetails.data.type; // e.g. "0x5714...::journal_access::JournalAccess"
-              const parts = typeStr.split("::");
-              if (parts.length > 0 && parts[0].startsWith("0x")) {
-                const policyPkg = parts[0].toLowerCase().replace(/^0x/, "").padStart(64, "0");
-                const currentPkg = PACKAGE_ID.toLowerCase().replace(/^0x/, "").padStart(64, "0");
-                if (policyPkg !== currentPkg) {
-                  console.warn(`Policy object ${savedPolicy} package ID mismatch! Object belongs to ${parts[0]} but app is configured for ${PACKAGE_ID}. Resetting policy...`);
-                  localStorage.removeItem(`tuskos_policy_${addressLower}`);
-                  setPolicyObjectId("");
-                  setLiveStatus({
-                    text: "⚠️ On-chain policy mismatch detected (contract upgraded). Re-initializing policy...",
-                    color: "orange"
-                  });
-                  setTimeout(() => setLiveStatus(null), 5000);
-                }
-              }
-            } else {
-              console.warn(`Policy object ${savedPolicy} not found on-chain. Resetting policy...`);
-              localStorage.removeItem(`tuskos_policy_${addressLower}`);
-              setPolicyObjectId("");
-            }
-          } catch (err) {
-            console.error("Failed to verify on-chain policy package ID:", err);
-          }
-        };
-        checkPolicy();
-      }
-
       // 2. Restore boards list and active board ID
       const savedBoards = localStorage.getItem(`tuskos_boards_${addressLower}`);
       const initialBoards = savedBoards
@@ -267,6 +356,49 @@ export default function Dashboard() {
       const activeBoardObj = initialBoards.find((b: any) => b.id === actualActiveBoard);
       if (activeBoardObj) {
         setTopic(activeBoardObj.topic);
+      }
+
+      // 1. Restore policy object ID (board-specific)
+      const savedPolicy = localStorage.getItem(`tuskos_policy_${addressLower}_board_${actualActiveBoard}`);
+      setPolicyObjectId(savedPolicy || "");
+
+      if (savedPolicy) {
+        // Asynchronously verify that the policy object's on-chain package matches current PACKAGE_ID
+        const checkPolicy = async () => {
+          try {
+            const { getSuiClient } = await import("../lib/seal");
+            const suiClient = getSuiClient();
+            const objDetails = await suiClient.getObject({
+              id: savedPolicy,
+              options: { showType: true }
+            });
+            if (objDetails.data && objDetails.data.type) {
+              const typeStr = objDetails.data.type; // e.g. "0x5714...::journal_access::JournalAccess"
+              const parts = typeStr.split("::");
+              if (parts.length > 0 && parts[0].startsWith("0x")) {
+                const policyPkg = parts[0].toLowerCase().replace(/^0x/, "").padStart(64, "0");
+                const currentPkg = PACKAGE_ID.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+                if (policyPkg !== currentPkg) {
+                  console.warn(`Policy object ${savedPolicy} package ID mismatch! Object belongs to ${parts[0]} but app is configured for ${PACKAGE_ID}. Resetting policy...`);
+                  localStorage.removeItem(`tuskos_policy_${addressLower}_board_${actualActiveBoard}`);
+                  setPolicyObjectId("");
+                  setLiveStatus({
+                    text: "⚠️ On-chain policy mismatch detected (contract upgraded). Re-initializing policy...",
+                    color: "orange"
+                  });
+                  setTimeout(() => setLiveStatus(null), 5000);
+                }
+              }
+            } else {
+              console.warn(`Policy object ${savedPolicy} not found on-chain. Resetting policy...`);
+              localStorage.removeItem(`tuskos_policy_${addressLower}_board_${actualActiveBoard}`);
+              setPolicyObjectId("");
+            }
+          } catch (err) {
+            console.error("Failed to verify on-chain policy package ID:", err);
+          }
+        };
+        checkPolicy();
       }
 
       // 3. Restore board-specific encrypted history
@@ -331,7 +463,7 @@ export default function Dashboard() {
     setHistory([]);
     setConsensusReached(null);
     setDebateIterations(null);
-    setPolicyObjectId(localStorage.getItem(`tuskos_policy_${normalized}`) || "");
+    setPolicyObjectId(localStorage.getItem(`tuskos_policy_${normalized}_board_${actualActiveBoard}`) || "");
     setEncryptedHistory(localStorage.getItem(`tuskos_encrypted_${normalized}_board_${actualActiveBoard}`));
     fetchHistory(wsId);
     fetchUserReports(wsId);
@@ -356,6 +488,8 @@ export default function Dashboard() {
     setConsensusReached(null);
     setDebateIterations(null);
     
+    setPolicyObjectId(localStorage.getItem(`tuskos_policy_${addressLower}_board_${boardId}`) || "");
+
     const savedEncrypted = localStorage.getItem(`tuskos_encrypted_${addressLower}_board_${boardId}`);
     if (savedEncrypted) {
       setEncryptedHistory(savedEncrypted);
@@ -383,12 +517,15 @@ export default function Dashboard() {
     setActiveBoardId(newBoard.id);
     localStorage.setItem(`tuskos_active_board_${addressLower}`, newBoard.id);
     setTopic(newBoard.topic);
+    setBoardsExpanded(true); // Automatically expand the active boards section on creation
 
     setHistory([]);
     setSelectedReport(null);
     setSelectedReportText(null);
     setSelectedReportHistory([]);
     setIsReportUnsealed(false);
+    setConsensusReached(null);
+    setDebateIterations(null);
     setEncryptedHistory(null);
     setIsLiveHistoryUnsealed(false);
   };
@@ -571,7 +708,7 @@ export default function Dashboard() {
 
         activePolicyId = (created as any).objectId;
         setPolicyObjectId(activePolicyId);
-        localStorage.setItem(`tuskos_policy_${walletAddress?.toLowerCase()}`, activePolicyId);
+        localStorage.setItem(`tuskos_policy_${walletAddress?.toLowerCase()}_board_${activeBoardId}`, activePolicyId);
 
         setLiveStatus({
           text: `✓ Policy created (${activePolicyId.slice(0, 10)}…). Starting encryption…`,
@@ -729,15 +866,13 @@ export default function Dashboard() {
     // not the current viewer's policyObjectId. If selectedReport.policyId is missing
     // (e.g. manually imported via Blob ID), we can use a placeholder because
     // decryptAgentHistory extracts the actual policy ID from the encrypted bytes.
-    const effectivePolicyId = selectedReport.isShared
-      ? selectedReport.policyId
-      : policyObjectId;
+    const effectivePolicyId = selectedReport.policyId || policyObjectId;
 
     if (!effectivePolicyId) {
       alert(
         selectedReport.isShared
           ? "This shared report is missing a policy ID in the index. Ask the owner to re-share, or use Rebuild from Blockchain."
-          : "Policy object ID not set. Seal a journal first to create a policy."
+          : "Policy object ID not set. Seal a journal first to create a policy or use Rebuild from Blockchain to restore the policy ID."
       );
       return;
     }
@@ -771,6 +906,78 @@ export default function Dashboard() {
       alert("Authorization failed: " + (err.message || String(err)));
     } finally {
       setIsDecryptingReport(false);
+    }
+  };
+
+  const handleImportToBoard = async () => {
+    if (!selectedReport || !selectedReportHistory || selectedReportHistory.length === 0) {
+      alert("No decrypted history to import.");
+      return;
+    }
+    if (!walletAddress) {
+      alert("Connect wallet first.");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const addressLower = walletAddress.toLowerCase();
+      const boardId = `board_${Date.now()}`;
+      const newWsId = `wallet_${addressLower}_board_${boardId}`;
+
+      // 1. API Call First: POST history to /api/history to save to MemWal under the new workspace ID
+      const res = await fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: newWsId,
+          history: selectedReportHistory
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to persist imported chat history to decentralized ledger.");
+      }
+
+      // 2. State & localStorage Update on Success
+      const boardName = `Imported: ${selectedReport.topic}`;
+      const newBoard = {
+        id: boardId,
+        name: boardName,
+        topic: selectedReport.topic,
+      };
+
+      const updatedBoards = [...boards, newBoard];
+      setBoards(updatedBoards);
+      localStorage.setItem(`tuskos_boards_${addressLower}`, JSON.stringify(updatedBoards));
+
+      // 3. UI Switch
+      setActiveBoardId(boardId);
+      localStorage.setItem(`tuskos_active_board_${addressLower}`, boardId);
+      setTopic(selectedReport.topic);
+      setWorkspaceId(newWsId);
+
+      // Reset view states
+      setSelectedReport(null);
+      setSelectedReportText(null);
+      setSelectedReportHistory([]);
+      setIsReportUnsealed(false);
+      
+      // Load history for the newly created active board
+      await fetchHistory(newWsId);
+      
+      setLiveStatus({
+        text: `✓ Chat successfully imported to new board: "${boardName}"`,
+        color: "green"
+      });
+      setTimeout(() => setLiveStatus(null), 5000);
+
+    } catch (err: any) {
+      console.error("Import to board error:", err);
+      alert("Import to board failed: " + (err.message || String(err)));
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -840,25 +1047,141 @@ export default function Dashboard() {
 
   const handleRebuildFromBlockchain = async () => {
     if (!walletAddress) return;
-    setIsRebuilding(true);
+    const addressLower = walletAddress.toLowerCase();
+
+    // Cancel any previous in-flight rebuild cleanly
+    rebuildAbortRef.current?.abort();
+    const controller = new AbortController();
+    rebuildAbortRef.current = controller;
+
+    // ── Phase 1: Instant display from MemWal chain ───────────────────────────
+    setRebuildPhase("reading-chain");
+    try {
+      const res = await fetch(
+        `/api/admin/chain_reports?wallet=${addressLower}`,
+        { signal: controller.signal }
+      );
+      if (!res.ok) throw new Error(`chain_reports returned ${res.status}`);
+      const data = await res.json();
+      if (controller.signal.aborted) return;
+      applyChainReportsToState(data, addressLower);
+      setArchivedExpanded(true);
+    } catch (err: any) {
+      if (err.name === "AbortError") return; // clean exit on wallet switch / unmount
+      console.error("Rebuild Phase 1 failed:", err);
+      setRebuildPhase(null);
+      return;
+    }
+
+    if (controller.signal.aborted) return;
+
+    // ── Phase 2: Background MongoDB re-population ────────────────────────────
+    setRebuildPhase("syncing-db");
     try {
       const res = await fetch("/api/admin/sync_ledger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wallet: walletAddress }),
+        signal: controller.signal,
       });
       const data = await res.json();
-      if (res.ok && data.status === "success") {
-        alert(`✓ Database rebuilt successfully! Synchronized ${data.upserted} report records from the decentralized network.`);
+
+      if (controller.signal.aborted) return;
+
+      if (res.ok && data.dbAvailable) {
+        // MongoDB is alive and re-populated — switch back to db mode
+        setDbMode("db");
+        localStorage.setItem(`tuskos_db_mode_${addressLower}`, "db");
         await loadArchivedJournals(walletAddress);
+        setLiveStatus({
+          text: `✅ Blockchain rebuild complete. Synced ${data.upserted} reports to database.`,
+          color: "green",
+        });
       } else {
-        alert("Rebuild Failed: " + (data.error || "Unknown error"));
+        // DB unavailable — chain data is already displayed, which is fine
+        setLiveStatus({
+          text: "🔗 Chain data loaded. Database offline — staying in chain mode.",
+          color: "orange",
+        });
       }
-    } catch (err) {
-      console.error("Rebuild error", err);
-      alert("Rebuild Failed: " + (err instanceof Error ? err.message : String(err)));
+    } catch (err: any) {
+      if (err.name === "AbortError") return; // clean exit
+      console.error("Rebuild Phase 2 (DB sync) failed:", err);
+      // Chain data already displaying — non-fatal
+      setLiveStatus({
+        text: "⚠️ Chain data loaded. DB sync failed — staying in chain mode.",
+        color: "orange",
+      });
     } finally {
-      setIsRebuilding(false);
+      if (!controller.signal.aborted) {
+        setRebuildPhase("done");
+        setTimeout(() => setRebuildPhase(null), 2500);
+        setTimeout(() => setLiveStatus(null), 5000);
+      }
+    }
+  };
+
+  /**
+   * Nuke DB: authenticates with a wallet signature, then wipes this wallet's
+   * MongoDB index records. Immediately switches to chain mode.
+   */
+  const handleNukeDb = async () => {
+    if (!walletAddress) return;
+    const addressLower = walletAddress.toLowerCase();
+
+    const confirmed = window.confirm(
+      "☢ NUKE DB\n\n" +
+      "This will permanently delete your MongoDB report index entries.\n" +
+      "Your encrypted reports remain safe on Walrus + MemWal.\n\n" +
+      "You will be asked to sign a verification message with your wallet.\n\n" +
+      "Continue?"
+    );
+    if (!confirmed) return;
+
+    setIsNukingDb(true);
+    try {
+      // 1. Build signed message for authentication
+      const timestamp = Date.now();
+      const message = `TUSKOS_NUKE_DB:${addressLower}:${timestamp}`;
+      const msgBytes = new TextEncoder().encode(message);
+
+      // 2. Request wallet signature
+      setLiveStatus({ text: "Waiting for wallet signature to authorize DB nuke…", color: "orange" });
+      const { signature } = await signPersonalMessageFn({ message: msgBytes });
+
+      // 3. POST with cryptographic proof
+      setLiveStatus({ text: "☢ Nuking database…", color: "orange" });
+      const res = await fetch("/api/admin/nuke_db", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: walletAddress, message, signature, timestamp }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `nuke_db returned ${res.status}`);
+
+      // 4. Switch to chain mode + CLEAR UI — reports only reappear after explicit Rebuild
+      setDbMode("chain");
+      localStorage.setItem(`tuskos_db_mode_${addressLower}`, "chain");
+      // Do NOT auto-load from chain — the user must click "Rebuild from Blockchain"
+      // to consciously confirm they want to restore from the decentralized ledger.
+      setArchivedReports([]);
+      setSharedReports([]);
+      setSelectedReport(null);
+      setSelectedReportText(null);
+      setSelectedReportHistory([]);
+      setIsReportUnsealed(false);
+
+      setLiveStatus({
+        text: `☢ Nuked ${data.deleted} index records. Click "Rebuild from Blockchain" to restore.`,
+        color: "orange",
+      });
+      setTimeout(() => setLiveStatus(null), 5000);
+    } catch (err: any) {
+      console.error("Nuke DB error:", err);
+      setLiveStatus({ text: "Nuke DB failed: " + (err.message || String(err)), color: "red" });
+      setTimeout(() => setLiveStatus(null), 5000);
+    } finally {
+      setIsNukingDb(false);
     }
   };
 
@@ -892,10 +1215,14 @@ export default function Dashboard() {
           sharedReports={sharedReports}
           selectedReport={selectedReport}
           isRebuilding={isRebuilding}
+          rebuildPhase={rebuildPhase}
+          dbMode={dbMode}
+          isNukingDb={isNukingDb}
           sidebarOpen={sidebarOpen}
           onCloseSidebar={() => setSidebarOpen(false)}
           onSelectReport={selectReport}
           onRebuildFromBlockchain={handleRebuildFromBlockchain}
+          onNukeDb={handleNukeDb}
           onSwitchWalletAccount={switchWalletAccount}
           onDisconnect={handleDisconnect}
           boards={boards}
@@ -904,6 +1231,12 @@ export default function Dashboard() {
           onNewBoardClick={() => setShowNewBoardModal(true)}
           activeMode={activeMode}
           onSelectMode={setActiveMode}
+          boardsExpanded={boardsExpanded}
+          setBoardsExpanded={setBoardsExpanded}
+          archivedExpanded={archivedExpanded}
+          setArchivedExpanded={setArchivedExpanded}
+          sharedExpanded={sharedExpanded}
+          setSharedExpanded={setSharedExpanded}
         />
 
         <main className="tusk-main">
@@ -931,6 +1264,7 @@ export default function Dashboard() {
             selectedReport={selectedReport}
             setSelectedReport={setSelectedReport}
             isFetchingReport={isFetchingReport}
+            isFetchingHistory={isFetchingHistory}
             isReportUnsealed={isReportUnsealed}
             selectedReportHistory={selectedReportHistory}
             isDecryptingReport={isDecryptingReport}
@@ -944,6 +1278,8 @@ export default function Dashboard() {
             onDecryptHistory={decryptHistory}
             consensusReached={consensusReached}
             debateIterations={debateIterations}
+            isImporting={isImporting}
+            onImportToBoard={handleImportToBoard}
           />
         </main>
       </div>
