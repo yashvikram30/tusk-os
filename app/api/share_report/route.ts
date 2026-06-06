@@ -149,19 +149,12 @@ async function writeInboxGrant(
   blobId?: string
 ) {
   const recipientWorkspace = new Workspace(`wallet_${recipientLower}`);
-  await recipientWorkspace
-    .addNote({
-      author: 'SHARED_INBOX_GRANT',
-      note: JSON.stringify({
-        fromAddress: senderLower,
-        policyId: policyLower,
-        ...(blobId ? { blobId } : {}),
-      }),
-    })
-    .catch((err) => {
-      console.error(
-        `Failed to write SHARED_INBOX_GRANT pointer to MemWal for ${recipientLower}:`,
-        err
-      );
-    });
+  await recipientWorkspace.addNote({
+    author: 'SHARED_INBOX_GRANT',
+    note: JSON.stringify({
+      fromAddress: senderLower,
+      policyId: policyLower,
+      ...(blobId ? { blobId } : {}),
+    }),
+  });
 }

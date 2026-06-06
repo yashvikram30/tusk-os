@@ -15,10 +15,14 @@ export interface SidebarProps {
   sharedReports: any[];
   selectedReport: any;
   isRebuilding: boolean;
+  rebuildPhase: "reading-chain" | "syncing-db" | "done" | null;
+  dbMode: "db" | "chain";
+  isNukingDb: boolean;
   sidebarOpen: boolean;
   onCloseSidebar: () => void;
   onSelectReport: (report: any) => void;
   onRebuildFromBlockchain: () => void;
+  onNukeDb: () => void;
   onSwitchWalletAccount: () => void;
   onDisconnect: () => void;
   boards: Board[];
@@ -27,6 +31,12 @@ export interface SidebarProps {
   onNewBoardClick: () => void;
   activeMode: string;
   onSelectMode: (mode: string) => void;
+  boardsExpanded: boolean;
+  setBoardsExpanded: (val: boolean) => void;
+  archivedExpanded: boolean;
+  setArchivedExpanded: (val: boolean) => void;
+  sharedExpanded: boolean;
+  setSharedExpanded: (val: boolean) => void;
 }
 
 export default function Sidebar({
@@ -36,10 +46,14 @@ export default function Sidebar({
   sharedReports,
   selectedReport,
   isRebuilding,
+  rebuildPhase,
+  dbMode,
+  isNukingDb,
   sidebarOpen,
   onCloseSidebar,
   onSelectReport,
   onRebuildFromBlockchain,
+  onNukeDb,
   onSwitchWalletAccount,
   onDisconnect,
   boards,
@@ -48,10 +62,30 @@ export default function Sidebar({
   onNewBoardClick,
   activeMode,
   onSelectMode,
+  boardsExpanded,
+  setBoardsExpanded,
+  archivedExpanded,
+  setArchivedExpanded,
+  sharedExpanded,
+  setSharedExpanded,
 }: SidebarProps) {
-  const [boardsExpanded, setBoardsExpanded] = React.useState(false);
-  const [archivedExpanded, setArchivedExpanded] = React.useState(false);
-  const [sharedExpanded, setSharedExpanded] = React.useState(false);
+
+  // Derive rebuild button label from phase
+  const rebuildLabel = (() => {
+    if (rebuildPhase === "reading-chain") return "🔄 READING CHAIN...";
+    if (rebuildPhase === "syncing-db")    return "⏳ SYNCING DATABASE...";
+    if (rebuildPhase === "done")          return "✅ SYNC COMPLETE";
+    return "🔄 REBUILD FROM BLOCKCHAIN";
+  })();
+
+  // DB status indicator config
+  const dbStatusConfig = (() => {
+    if (rebuildPhase === "reading-chain") return { dot: "#f59e0b", text: "READING CHAIN..." };
+    if (rebuildPhase === "syncing-db")    return { dot: "#f59e0b", text: "SYNCING DATABASE..." };
+    if (rebuildPhase === "done")          return { dot: "#22c55e", text: "SYNC COMPLETE" };
+    if (dbMode === "chain")               return { dot: "#3b82f6", text: "CHAIN MODE" };
+    return                                       { dot: "#22c55e", text: "DB LIVE" };
+  })();
 
   return (
     <aside className={`tusk-sidebar${sidebarOpen ? " is-open" : ""}`}>
@@ -259,27 +293,67 @@ export default function Sidebar({
               }}>▼</span>
               ARCHIVED REPORTS
             </div>
+            {/* DB status pill */}
+            <div style={{
+              marginLeft: "auto",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.3rem",
+              fontFamily: "var(--font-head)",
+              fontSize: "0.5rem",
+              fontWeight: 700,
+              color: dbStatusConfig.dot,
+              letterSpacing: "0.06em",
+              padding: "2px 6px",
+              border: `1px solid ${dbStatusConfig.dot}`,
+              borderRadius: "2px",
+              opacity: 0.85,
+              flexShrink: 0,
+            }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: dbStatusConfig.dot, display: "inline-block", flexShrink: 0 }} />
+              {dbStatusConfig.text}
+            </div>
           </div>
           
           {archivedExpanded && (
             <div className="tusk-archive-list">
               <button
                 onClick={onRebuildFromBlockchain}
-                disabled={isRebuilding}
+                disabled={isRebuilding || isNukingDb}
                 className="tusk-btn tusk-btn-ghost"
                 style={{ 
                   width: "100%", 
                   fontSize: "0.58rem", 
                   padding: "0.5rem", 
-                  color: "var(--accent-orange)", 
-                  borderColor: "var(--accent-orange)",
-                  marginBottom: "0.2rem"
+                  color: rebuildPhase === "done" ? "var(--accent-green, #22c55e)" : "var(--accent-orange)", 
+                  borderColor: rebuildPhase === "done" ? "var(--accent-green, #22c55e)" : "var(--accent-orange)",
+                  marginBottom: "0.2rem",
+                  opacity: (isRebuilding || isNukingDb) ? 0.6 : 1,
+                  transition: "color 0.2s, border-color 0.2s",
                 }}
                 title="Reconstruct your MongoDB index cache directly from decentralized ledger nodes"
               >
-                {isRebuilding ? "🔄 REBUILDING…" : "🔄 REBUILD FROM BLOCKCHAIN"}
+                {rebuildLabel}
               </button>
-              {archivedReports.length === 0 ? (
+              <button
+                onClick={onNukeDb}
+                disabled={isRebuilding || isNukingDb}
+                className="tusk-btn tusk-btn-ghost"
+                style={{ 
+                  width: "100%", 
+                  fontSize: "0.58rem", 
+                  padding: "0.5rem",
+                  color: "#ef4444",
+                  borderColor: "#ef4444",
+                  marginBottom: "0.4rem",
+                  opacity: (isRebuilding || isNukingDb) ? 0.4 : 0.75,
+                  transition: "opacity 0.2s",
+                }}
+                title="Wipe MongoDB index cache. Requires wallet signature. Reports remain safe on Walrus + MemWal."
+              >
+                {isNukingDb ? "☢ NUKING..." : "☢ NUKE DB"}
+              </button>
+              {archivedReports.filter((r: any) => !r.needsSync).length === 0 ? (
                 <div style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: "0.7rem",
@@ -289,7 +363,9 @@ export default function Sidebar({
                   — No reports archived yet.
                 </div>
               ) : (
-                archivedReports.map((report: any, idx) => {
+                archivedReports
+                  .filter((r: any) => !r.needsSync)
+                  .map((report: any, idx) => {
                   const isSelected = selectedReport?.blobId === report.blobId;
                   if (report.isSyncing) {
                     return (
@@ -331,19 +407,38 @@ export default function Sidebar({
                   return (
                     <div
                       key={idx}
-                      onClick={() => onSelectReport(report)}
+                      onClick={() => {
+                        if (report.needsSync) return; // block click on unrecoverable reports
+                        onSelectReport(report);
+                      }}
                       className={`tusk-report-card${isSelected ? " active" : ""}`}
-                      style={report.isShared && !isSelected ? { borderColor: "var(--accent-blue)" } : undefined}
+                      style={{
+                        ...(report.isShared && !isSelected ? { borderColor: "var(--accent-blue)" } : {}),
+                        ...(report.needsSync ? { borderStyle: "dashed", borderColor: "#f59e0b", cursor: "default" } : {}),
+                      }}
                     >
                       <div style={{
                         fontFamily: "var(--font-mono)",
                         fontSize: "0.7rem",
-                        color: "var(--text-primary)",
+                        color: report.needsSync ? "var(--text-muted)" : "var(--text-primary)",
                         lineHeight: 1.5,
                       }}>
                         {report.topic || "Unknown Topic"}
                       </div>
-                      {report.isShared && report.fromAddress && (
+                      {report.needsSync && (
+                        <div style={{
+                          fontFamily: "var(--font-head)",
+                          fontSize: "0.55rem",
+                          fontWeight: 700,
+                          color: "#f59e0b",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.06em",
+                          marginTop: "0.15rem",
+                        }}>
+                          ⚡ SYNC REQUIRED — Run Rebuild to unlock
+                        </div>
+                      )}
+                      {!report.needsSync && report.isShared && report.fromAddress && (
                         <div style={{
                           fontFamily: "var(--font-mono)",
                           fontSize: "0.58rem",
@@ -354,23 +449,25 @@ export default function Sidebar({
                           from {report.fromAddress.slice(0, 6)}…{report.fromAddress.slice(-4)}
                         </div>
                       )}
-                      <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.4rem",
-                        fontFamily: "var(--font-head)",
-                        fontSize: "0.58rem",
-                        fontWeight: 700,
-                        color: isSelected ? "var(--purple)" : report.isShared ? "var(--accent-blue)" : "var(--text-muted)",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.05em",
-                      }}>
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
-                          <rect x="3" y="11" width="18" height="11" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                        {isSelected ? "SELECTED" : report.isShared ? "🔗 SHARED MEMORY" : "SEALED MEMORY"}
-                      </div>
+                      {!report.needsSync && (
+                        <div style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          fontFamily: "var(--font-head)",
+                          fontSize: "0.58rem",
+                          fontWeight: 700,
+                          color: isSelected ? "var(--purple)" : report.isShared ? "var(--accent-blue)" : "var(--text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                            <rect x="3" y="11" width="18" height="11" />
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                          </svg>
+                          {isSelected ? "SELECTED" : report.isShared ? "🔗 SHARED MEMORY" : "SEALED MEMORY"}
+                        </div>
+                      )}
                     </div>
                   );
                 })

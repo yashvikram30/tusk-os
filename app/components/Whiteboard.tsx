@@ -26,6 +26,9 @@ export interface WhiteboardProps {
   onDecryptHistory: () => void;
   consensusReached: boolean | null;
   debateIterations: number | null;
+  isImporting?: boolean;
+  onImportToBoard?: () => void;
+  isFetchingHistory: boolean;
 }
 
 export default function Whiteboard({
@@ -46,6 +49,9 @@ export default function Whiteboard({
   onDecryptHistory,
   consensusReached,
   debateIterations,
+  isImporting = false,
+  onImportToBoard,
+  isFetchingHistory,
 }: WhiteboardProps) {
   return (
     <div ref={whiteboardRef} className="tusk-whiteboard">
@@ -53,10 +59,35 @@ export default function Whiteboard({
         /* ── Archived Report View ── */
         <div className="tusk-report-view">
           {/* Header with back button */}
-          <div className="tusk-report-header">
+          <div className="tusk-report-header" style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <button onClick={() => setSelectedReport(null)} className="tusk-btn tusk-btn-ghost">
               ← BACK TO LIVE WORKSPACE
             </button>
+            {isReportUnsealed && onImportToBoard && (
+              <button
+                onClick={onImportToBoard}
+                disabled={isImporting}
+                className="tusk-btn"
+                style={{
+                  borderColor: "var(--purple)",
+                  color: "var(--purple)",
+                  padding: "0.4rem 0.8rem",
+                  fontSize: "0.68rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.4rem"
+                }}
+              >
+                {isImporting ? (
+                  <>
+                    <span className="tusk-spinner" style={{ borderColor: "var(--purple) var(--purple) transparent transparent", width: "10px", height: "10px", margin: 0 }} />
+                    IMPORTING…
+                  </>
+                ) : (
+                  "📥 IMPORT TO BOARD"
+                )}
+              </button>
+            )}
             <div style={{ flex: 1 }} />
             <div className="tusk-report-meta">
               <span>BLOB ID: {selectedReport.blobId.slice(0, 10)}…</span>
@@ -248,7 +279,7 @@ export default function Whiteboard({
           )}
 
           {/* Empty state */}
-          {history.length === 0 && !liveStatus && !successBanner && !encryptedHistory && (
+          {history.length === 0 && !liveStatus && !successBanner && !encryptedHistory && !isFetchingHistory && (
             <div className="tusk-empty">
               <svg width="44" height="44" viewBox="0 0 48 48" fill="none" stroke="var(--border-dim)" strokeWidth="1.5">
                 <rect x="6" y="6" width="36" height="36" />
@@ -272,7 +303,26 @@ export default function Whiteboard({
           )}
 
           {/* Skeletons or Messages */}
-          {encryptedHistory && !isLiveHistoryUnsealed ? (
+          {isFetchingHistory ? (
+            /* Active board loading skeletons */
+            <div className="tusk-skeletons" style={{ display: "flex", flexDirection: "column", gap: "1.25rem", flex: 1 }}>
+              <div className="tusk-skeleton-msg" style={{ border: "2px solid var(--border-dim)", padding: "1.25rem", background: "var(--bg-ice)" }}>
+                <div className="tusk-skeleton-line" style={{ width: "30%", height: "10px", marginBottom: "0.8rem" }} />
+                <div className="tusk-skeleton-line" style={{ width: "90%", height: "12px", marginBottom: "0.5rem" }} />
+                <div className="tusk-skeleton-line" style={{ width: "65%", height: "12px" }} />
+              </div>
+              <div className="tusk-skeleton-msg" style={{ border: "2px solid var(--border-dim)", padding: "1.25rem", background: "var(--bg-ice)" }}>
+                <div className="tusk-skeleton-line" style={{ width: "25%", height: "10px", marginBottom: "0.8rem" }} />
+                <div className="tusk-skeleton-line" style={{ width: "85%", height: "12px", marginBottom: "0.5rem" }} />
+                <div className="tusk-skeleton-line" style={{ width: "45%", height: "12px" }} />
+              </div>
+              <div className="tusk-skeleton-msg" style={{ border: "2px solid var(--border-dim)", padding: "1.25rem", background: "var(--bg-ice)" }}>
+                <div className="tusk-skeleton-line" style={{ width: "35%", height: "10px", marginBottom: "0.8rem" }} />
+                <div className="tusk-skeleton-line" style={{ width: "95%", height: "12px", marginBottom: "0.5rem" }} />
+                <div className="tusk-skeleton-line" style={{ width: "80%", height: "12px" }} />
+              </div>
+            </div>
+          ) : encryptedHistory && !isLiveHistoryUnsealed ? (
             /* Sealed state skeletons */
             <div className="tusk-skeletons blurred" style={{ display: "flex", flexDirection: "column", gap: "1.25rem", flex: 1 }}>
               <div className="tusk-skeleton-msg" style={{ border: "2px solid var(--border-dim)", padding: "1.25rem", background: "var(--bg-ice)" }}>

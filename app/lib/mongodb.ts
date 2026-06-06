@@ -36,6 +36,20 @@ export async function dbConnect() {
   return cached.conn;
 }
 
+/**
+ * Non-throwing DB availability check.
+ * Useful for routes that want to branch on DB availability without crashing.
+ */
+export async function dbStatus(): Promise<'connected' | 'unconfigured' | 'error'> {
+  if (!MONGODB_URI) return 'unconfigured';
+  try {
+    await dbConnect();
+    return 'connected';
+  } catch {
+    return 'error';
+  }
+}
+
 export interface IReportIndex {
   blobId: string;
   ownerAddress: string;

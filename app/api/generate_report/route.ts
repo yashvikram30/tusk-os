@@ -12,7 +12,10 @@ export async function POST(req: Request) {
 
     const ownerLower = owner_address.toLowerCase();
     const policyLower = policy_id.toLowerCase();
-    const workspace = new Workspace(workspace_id);
+    // Always write archive index notes to the default primary workspace
+    // to ensure they can be recovered during a blockchain rebuild.
+    const primaryWorkspaceId = `wallet_${ownerLower}`;
+    const workspace = new Workspace(primaryWorkspaceId);
     
     // 1. Upload report directly to Walrus Testnet to get blobId
     const blobId = await uploadToWalrus(encryptedData);
@@ -38,15 +41,12 @@ export async function POST(req: Request) {
       console.error(`MongoDB index failed for blob ${blobId}:`, mongoErr);
     }
 
-    // 3. MemWal archive note (non-blocking — ledger rebuild can recover)
-    workspace
-      .addNote({
-        author: 'System_Archive',
-        note: JSON.stringify({ blobId, topic }),
-      })
-      .catch((err) => {
-        console.error(`MemWal System_Archive write failed for blob ${blobId}:`, err);
-      });
+    // 3. MemWal archive note (blocking to ensure on-chain permanence in serverless runtimes)
+    await workspace.addNote({
+      author: 'System_Archive',
+      // v2: policyId embedded so chain_reports can recover it without localStorage
+      note: JSON.stringify({ blobId, topic, policyId: policyLower }),
+    });
 
     return NextResponse.json({ status: 'success', blobId, indexed });
   } catch (error: unknown) {

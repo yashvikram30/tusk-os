@@ -93,7 +93,8 @@ export default function ShareModal({
   };
 
   const handleGrant = async () => {
-    if (!targetAddress.trim().startsWith("0x")) {
+    const targetClean = targetAddress.trim();
+    if (!targetClean.startsWith("0x")) {
       setError("Enter a valid Sui address (starts with 0x)");
       return;
     }
@@ -108,6 +109,17 @@ export default function ShareModal({
       return;
     }
 
+    const policyIdNormalized = policyObjectId.startsWith("0x") ? policyObjectId : `0x${policyObjectId}`;
+    const packageIdNormalized = packageId.startsWith("0x") ? packageId : `0x${packageId}`;
+
+    console.log("ShareModal: handleGrant called", {
+      walletAddress,
+      targetAddress: targetClean,
+      policyObjectId: policyIdNormalized,
+      packageId: packageIdNormalized,
+      blobId,
+    });
+
     setIsTxPending(true);
     setError(null);
     setTxDigest(null);
@@ -120,17 +132,19 @@ export default function ShareModal({
         const tx = new Transaction();
         tx.setSender(walletAddress);
         tx.moveCall({
-          target: `${packageId}::journal_access::grant_access`,
+          target: `${packageIdNormalized}::journal_access::grant_access`,
           arguments: [
-            tx.object(policyObjectId),
-            tx.pure.address(targetAddress.trim()),
+            tx.object(policyIdNormalized),
+            tx.pure.address(targetClean),
           ],
         });
 
         const result = await signAndExecuteTransaction(tx);
+        console.log("ShareModal: transaction result digest", result.digest);
         setTxDigest(result.digest);
         chainConfirmed = true;
       } catch (chainErr: unknown) {
+        console.warn("ShareModal: on-chain grant failed, checking fallback:", chainErr);
         if (isAlreadySharedOnChain(chainErr)) {
           setIndexMessage(
             "Recipient already has on-chain access. Syncing inbox index…"
@@ -142,10 +156,11 @@ export default function ShareModal({
       }
 
       if (chainConfirmed) {
-        await registerShareIndex("grant", targetAddress.trim());
+        await registerShareIndex("grant", targetClean);
         onShareComplete?.();
       }
     } catch (err: unknown) {
+      console.error("ShareModal: handleGrant error", err);
       setTxDigest(null);
       setError(err instanceof Error ? err.message : "Share failed");
     } finally {
@@ -154,10 +169,26 @@ export default function ShareModal({
   };
 
   const handleRevoke = async () => {
-    if (!targetAddress.trim().startsWith("0x")) {
+    const targetClean = targetAddress.trim();
+    if (!targetClean.startsWith("0x")) {
       setError("Enter a valid Sui address to revoke");
       return;
     }
+
+    if (!policyObjectId) {
+      setError("No policy object found.");
+      return;
+    }
+
+    const policyIdNormalized = policyObjectId.startsWith("0x") ? policyObjectId : `0x${policyObjectId}`;
+    const packageIdNormalized = packageId.startsWith("0x") ? packageId : `0x${packageId}`;
+
+    console.log("ShareModal: handleRevoke called", {
+      walletAddress,
+      targetAddress: targetClean,
+      policyObjectId: policyIdNormalized,
+      packageId: packageIdNormalized,
+    });
 
     setIsTxPending(true);
     setError(null);
@@ -168,18 +199,19 @@ export default function ShareModal({
       const tx = new Transaction();
       tx.setSender(walletAddress);
       tx.moveCall({
-        target: `${packageId}::journal_access::revoke_access`,
+        target: `${packageIdNormalized}::journal_access::revoke_access`,
         arguments: [
-          tx.object(policyObjectId),
-          tx.pure.address(targetAddress.trim()),
+          tx.object(policyIdNormalized),
+          tx.pure.address(targetClean),
         ],
       });
 
       const result = await signAndExecuteTransaction(tx);
+      console.log("ShareModal: revoke transaction result digest", result.digest);
       setTxDigest(result.digest);
 
       try {
-        await registerShareIndex("revoke", targetAddress.trim());
+        await registerShareIndex("revoke", targetClean);
       } catch (indexErr) {
         console.error("Failed to update share index after revoke:", indexErr);
         setIndexMessage(
@@ -188,6 +220,7 @@ export default function ShareModal({
       }
       onShareComplete?.();
     } catch (err: unknown) {
+      console.error("ShareModal: handleRevoke error", err);
       setError(err instanceof Error ? err.message : "Revoke transaction failed");
     } finally {
       setIsTxPending(false);
