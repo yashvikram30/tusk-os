@@ -528,6 +528,7 @@ export default function Dashboard() {
     setDebateIterations(null);
     setEncryptedHistory(null);
     setIsLiveHistoryUnsealed(false);
+    setPolicyObjectId("");
   };
 
   const handleSetTopic = (newTopic: string) => {
@@ -812,8 +813,12 @@ export default function Dashboard() {
       );
 
       const parsed = JSON.parse(plainText);
-      setHistory(parsed.history || []);
+      const historyData = Array.isArray(parsed) ? parsed : (parsed.history || []);
+      setHistory(historyData);
       setIsLiveHistoryUnsealed(true);
+      if (parsed.topic) {
+        setTopic(parsed.topic);
+      }
       setLiveStatus({
         text: "✓ History unsealed and decrypted successfully.",
         color: "green",
@@ -899,8 +904,17 @@ export default function Dashboard() {
       );
 
       const parsed = JSON.parse(plainText);
-      setSelectedReportHistory(parsed.history || []);
+      const historyData = Array.isArray(parsed) ? parsed : (parsed.history || []);
+      setSelectedReportHistory(historyData);
       setIsReportUnsealed(true);
+      if (parsed.topic) {
+        setSelectedReport((current: any) => {
+          if (current) {
+            return { ...current, topic: parsed.topic };
+          }
+          return current;
+        });
+      }
     } catch (err: any) {
       console.error("Authorization failed:", err);
       alert("Authorization failed: " + (err.message || String(err)));
@@ -963,6 +977,8 @@ export default function Dashboard() {
       setSelectedReportText(null);
       setSelectedReportHistory([]);
       setIsReportUnsealed(false);
+      setPolicyObjectId("");
+      setEncryptedHistory(null);
       
       // Load history for the newly created active board
       await fetchHistory(newWsId);

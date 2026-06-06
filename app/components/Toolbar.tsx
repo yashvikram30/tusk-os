@@ -161,10 +161,10 @@ export default function Toolbar({
         </button>
         <button
           onClick={onShare}
-          disabled={!policyObjectId || !shareTargetReport}
+          disabled={!(shareTargetReport?.policyId || policyObjectId) || !shareTargetReport}
           className="tusk-btn"
           title={
-            !policyObjectId
+            !(shareTargetReport?.policyId || policyObjectId)
               ? "Seal a journal first to create an access policy"
               : !shareTargetReport
               ? "Archive the journal to Walrus before sharing"

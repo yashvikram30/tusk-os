@@ -104,7 +104,9 @@ export default function LandingPage() {
             </button>
 
             <a
-              href="#"
+              href="https://github.com/yashvikram30/tusk-os"
+              target="_blank"
+              rel="noopener noreferrer"
               className="tusk-btn tusk-btn-secondary"
               style={{ padding: "0.85rem 1.75rem", fontSize: "0.8rem" }}
             >

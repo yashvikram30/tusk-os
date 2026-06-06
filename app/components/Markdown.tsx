@@ -75,6 +75,11 @@ export default function Markdown({ content }: MarkdownProps) {
       .replace(/\\beta/g, "β")
       .replace(/\\sigma/g, "σ")
       .replace(/\\times/g, " × ")
+      .replace(/\\cdot/g, " · ")
+      .replace(/\\div/g, " ÷ ")
+      .replace(/\\pm/g, " ± ")
+      .replace(/\\sqrt\s*{(.*?)}/g, "√($1)")
+      .replace(/\\sqrt/g, "√")
       .replace(/\\leq/g, " ≤ ")
       .replace(/\\geq/g, " ≥ ")
       .replace(/\\delta/g, "δ")
@@ -619,8 +624,8 @@ export default function Markdown({ content }: MarkdownProps) {
                 </div>
               );
             } else if (
-              (trimmed.includes("=") || trimmed.includes("≤") || trimmed.includes("≥") || trimmed.includes("<") || trimmed.includes(">") || trimmed.includes("\\leq") || trimmed.includes("\\geq")) &&
-              (/\\(frac|beta|sigma|times|delta|Delta|alpha|gamma|theta|lambda|mu|phi|pi|rho|tau|omega|infty|approx|neq|begin|end)\b/.test(trimmed) || 
+              (trimmed.includes("=") || trimmed.includes("≤") || trimmed.includes("≥") || trimmed.includes("<") || trimmed.includes(">") || trimmed.includes("\\leq") || trimmed.includes("\\geq") || trimmed.includes("≈") || trimmed.includes("≠") || trimmed.includes("\\approx") || trimmed.includes("\\neq")) &&
+              (/\\(frac|beta|sigma|times|delta|Delta|alpha|gamma|theta|lambda|mu|phi|pi|rho|tau|omega|infty|approx|neq|begin|end|text|cdot|div|pm|sqrt)\b/.test(trimmed) || 
                /\b(CRnew|Vcrash|Ainitial|LRbase|LRadjusted)\b/.test(trimmed) ||
                /\b([a-zA-Z0-9\-]+)_([a-zA-Z0-9\-]+)\b/.test(trimmed))
             ) {
